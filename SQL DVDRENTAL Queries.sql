@@ -44,6 +44,8 @@ DROP COLUMN inventory_pk,
 DROP COLUMN payment_customer,
 DROP COLUMN store_pk;
 
+SELECT * FROM order_details
+
 
 
 --- CREATE 3RD TABLE WITH GEOGRAPHICAL DETAILS TO JOIN WITH FACT TABLES
@@ -226,7 +228,7 @@ SELECT
     WHEN a.rating = 'NC-17' THEN 'No children under 17 admitted'
     WHEN a.rating = 'PG-13' THEN 'Parents strongly cautioned for children under 13'
     WHEN a.rating = 'G' THEN 'General audiences – All ages admitted'
-    END) AS VARCHAR(255)) AS rating_description, COUNT(b.rental_id) AS nr_rents,
+    END) AS VARCHAR(255)) AS rating_description, COUNT( DISTINCT b.rental_id) AS nr_rents,
     a.title
 FROM 
     (SELECT film_id AS a_film_id, title, rating FROM film) AS a
@@ -245,7 +247,7 @@ SELECT
     WHEN a.rating = 'NC-17' THEN 'No children under 17 admitted'
     WHEN a.rating = 'PG-13' THEN 'Parents strongly cautioned for children under 13'
     WHEN a.rating = 'G' THEN 'General audiences – All ages admitted'
-    END) AS VARCHAR(255)) AS rating_description, COUNT(b.rental_id) AS nr_rents
+    END) AS VARCHAR(255)) AS rating_description, COUNT(DISTINCT b.rental_id) AS nr_rents
 FROM 
     (SELECT film_id AS a_film_id, rating FROM film) AS a
 JOIN order_details AS b
@@ -258,7 +260,7 @@ ORDER BY nr_rents DESC;
 ---12) WHICH ARE THE CUSTOMERS WHO USE TO RENT MORE?
 
 SELECT CONCAT(a.first_name,' ',a.last_name) AS customer_name, 
-       COUNT(b.rental_id) AS nr_rents
+       COUNT(DISTINCT b.rental_id) AS nr_rents
 FROM customer AS a
 LEFT JOIN order_details AS b
 ON a.customer_id = b.customer_id
@@ -270,7 +272,7 @@ ORDER BY nr_rents DESC;
 ---13) ARE THE SAME WHO PAY MORE?
 
 SELECT CONCAT(a.first_name,' ',a.last_name) AS customer_name, 
-       COUNT(b.rental_id) AS nr_rents,
+       COUNT(DISTINCT b.rental_id) AS nr_rents,
        SUM(b.amount) AS tot_amount 
 FROM customer AS a
 LEFT JOIN order_details AS b
@@ -283,9 +285,9 @@ ORDER BY tot_amount DESC, nr_rents DESC;
 ---14) WHICH IS THE AVG TIME PERIOD BETWEEN THE MOST RECENT RENT AND THE LAST?
 
 WITH avg_rental_orders AS 
-    (SELECT DATE(payment_date) AS pay_date,
-            LAG(DATE(payment_date)) OVER (PARTITION BY customer_id ORDER BY DATE(payment_date)) AS lag_rent_date,
-            DATE(payment_date) - LAG(DATE(payment_date)) OVER (PARTITION BY customer_id ORDER BY DATE(payment_date)) AS day_diff   
+    (SELECT DATE(rental_date) AS rent_date,
+            LAG(DATE(rental_date)) OVER (PARTITION BY customer_id ORDER BY DATE(rental_date)) AS lag_rent_date,
+            DATE(rental_date) - LAG(DATE(rental_date)) OVER (PARTITION BY customer_id ORDER BY DATE(rental_date)) AS day_diff   
     FROM order_details)
 SELECT ROUND(AVG(day_diff),2) AS avg_days_orders
 FROM avg_rental_orders;
